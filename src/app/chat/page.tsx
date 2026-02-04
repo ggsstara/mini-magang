@@ -1,163 +1,236 @@
 "use client";
 
-// Hook React yang dipakai untuk state & optimasi callback
-import { useState, useCallback } from "react";
-
-// Komponen UI utama
+import { useState, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import MessageInput from "@/components/MessageInput";
 
-// Dummy data + tipe TypeScript
-import {
-  CONTACTS,
-  INITIAL_MESSAGES,
-  DUMMY_BOT_REPLIES,
-  Contact,
-  Message,
-} from "@/data/dummyData";
-
-// ─────────────────────────────────────────
-// Helper: generate id unik sederhana
-// (karena belum pakai database)
-// ─────────────────────────────────────────
-let counter = 9999;
-function uid() {
-  return String(++counter);
+// Types matching database schema
+interface Contact {
+  id: string;
+  name: string;
+  avatar: string;
+  lastMessage: string;
+  time: string;
+  unread: number;
+  online: boolean;
 }
 
-// ─────────────────────────────────────────
-// Helper: ambil waktu sekarang (HH:MM)
-// ─────────────────────────────────────────
-function nowTime(): string {
-  const d = new Date();
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-// ─────────────────────────────────────────
-// Helper: balasan bot berurutan (loop)
-// ─────────────────────────────────────────
-let replyIndex = 0;
-function getNextBotReply(): string {
-  const reply =
-    DUMMY_BOT_REPLIES[replyIndex % DUMMY_BOT_REPLIES.length];
-  replyIndex++;
-  return reply;
+interface Message {
+  id: string;
+  sender: "user" | "bot";
+  text: string;
+  time: string;
 }
 
 export default function ChatPage() {
-  // Semua pesan disimpan per kontak (key = contact.id)
-  // Deep clone agar dummy data tidak termutasi
-  const [allMessages, setAllMessages] = useState<
-    Record<string, Message[]>
-  >(() => {
-    const clone: Record<string, Message[]> = {};
-    for (const key of Object.keys(INITIAL_MESSAGES)) {
-      clone[key] = [...INITIAL_MESSAGES[key]];
-    }
-    return clone;
-  });
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  // Data kontak (sidebar)
-  const [contacts, setContacts] = useState<Contact[]>(() => [...CONTACTS]);
-
-  // Kontak yang sedang aktif
-  const [activeId, setActiveId] = useState<string>(CONTACTS[0].id);
-
-  // Status "bot sedang mengetik"
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [activeId, setActiveId] = useState<string>("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // ─────────────────────────────────────────
-  // Handler: memilih kontak di sidebar
-  // ─────────────────────────────────────────
+  // ── Redirect if not authenticated ──
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  // ── Load chat sessions on mount ──
+  useEffect(() => {
+    if (status === "authenticated") {
+      loadChatSessions();
+    }
+  }, [status]);
+
+  // ── Load messages when active chat changes ──
+  useEffect(() => {
+    if (activeId) {
+      loadMessages(activeId);
+    }
+  }, [activeId]);
+
+  const loadChatSessions = async () => {
+    try {
+      const res = await fetch("/api/chat/sessions");
+      const data = await res.json();
+
+      if (res.ok && data.chatSessions) {
+        const formatted: Contact[] = data.chatSessions.map((session: any) => ({
+          id: session.id,
+          name: session.botName,
+          avatar: session.botAvatar,
+          lastMessage: session.lastMessage,
+          time: session.lastTime,
+          unread: session.unreadCount,
+          online: session.isOnline,
+        }));
+
+        setContacts(formatted);
+        if (formatted.length > 0 && !activeId) {
+          setActiveId(formatted[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load chat sessions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async (sessionId: string) => {
+    try {
+      const res = await fetch(`/api/chat/messages?sessionId=${sessionId}`);
+      const data = await res.json();
+
+      if (res.ok && data.messages) {
+        const formatted: Message[] = data.messages.map((msg: any) => ({
+          id: msg.id,
+          sender: msg.sender,
+          text: msg.text,
+          time: msg.displayTime,
+        }));
+
+        setMessages(formatted);
+      }
+    } catch (error) {
+      console.error("Failed to load messages:", error);
+    }
+  };
+
   const handleSelect = useCallback((id: string) => {
-    // Ganti kontak aktif
     setActiveId(id);
-
-    // Hentikan indikator typing saat ganti chat
     setIsTyping(false);
-
-    // Reset unread badge pada kontak yang dipilih
+    // Clear unread badge
     setContacts((prev) =>
-      prev.map((c) =>
-        c.id === id ? { ...c, unread: 0 } : c
-      )
+      prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c))
     );
   }, []);
 
-  // ─────────────────────────────────────────
-  // Handler: kirim pesan user
-  // ─────────────────────────────────────────
-  const handleSend = useCallback(
-    (text: string) => {
-      const now = nowTime();
+  const handleSend = async (text: string) => {
+    if (!activeId) return;
 
-      // 1️⃣ Tambahkan pesan user ke chat aktif
-      const userMsg: Message = {
-        id: uid(),
-        sender: "user",
-        text,
-        time: now,
-      };
+    const tempUserMsg: Message = {
+      id: `temp-${Date.now()}`,
+      sender: "user",
+      text,
+      time: new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
 
-      setAllMessages((prev) => ({
-        ...prev,
-        [activeId]: [...(prev[activeId] || []), userMsg],
-      }));
+    // Optimistic update
+    setMessages((prev) => [...prev, tempUserMsg]);
 
-      // 2️⃣ Update preview terakhir di sidebar
-      setContacts((prev) =>
-        prev.map((c) =>
-          c.id === activeId
-            ? { ...c, lastMessage: text, time: now }
-            : c
-        )
-      );
+    // Update sidebar preview immediately
+    setContacts((prev) =>
+      prev.map((c) =>
+        c.id === activeId
+          ? { ...c, lastMessage: text, time: tempUserMsg.time }
+          : c
+      )
+    );
 
-      // 3️⃣ Simulasi bot sedang mengetik
-      setIsTyping(true);
+    // Show typing indicator
+    setIsTyping(true);
 
-      setTimeout(() => {
-        setIsTyping(false);
+    try {
+      const res = await fetch("/api/chat/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: activeId, text }),
+      });
 
-        // Ambil balasan bot dummy
-        const botReply = getNextBotReply();
+      const data = await res.json();
 
-        const botMsg: Message = {
-          id: uid(),
-          sender: "bot",
-          text: botReply,
-          time: nowTime(),
-        };
+      if (res.ok) {
+        // Replace temp message with real ones from DB
+        setMessages((prev) => {
+          const withoutTemp = prev.filter((m) => m.id !== tempUserMsg.id);
+          return [
+            ...withoutTemp,
+            {
+              id: data.userMessage.id,
+              sender: "user",
+              text: data.userMessage.text,
+              time: data.userMessage.displayTime,
+            },
+            {
+              id: data.botMessage.id,
+              sender: "bot",
+              text: data.botMessage.text,
+              time: data.botMessage.displayTime,
+            },
+          ];
+        });
 
-        // Tambahkan pesan bot ke chat
-        setAllMessages((prev) => ({
-          ...prev,
-          [activeId]: [...(prev[activeId] || []), botMsg],
-        }));
-
-        // Update sidebar dengan pesan bot terbaru
+        // Update sidebar with bot reply
         setContacts((prev) =>
           prev.map((c) =>
             c.id === activeId
               ? {
                   ...c,
-                  lastMessage: botReply,
-                  time: nowTime(),
+                  lastMessage: data.botMessage.text,
+                  time: data.botMessage.displayTime,
                 }
               : c
           )
         );
-      }, 1200 + Math.random() * 800); // Delay 1.2 – 2 detik
-    },
-    [activeId]
-  );
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      // Remove temp message on error
+      setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
-  // Ambil data kontak yang sedang aktif
-  const activeContact =
-    contacts.find((c) => c.id === activeId) ?? contacts[0];
+  // ── Loading state ──
+  if (status === "loading" || loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: "var(--color-bg-dark)",
+          color: "var(--color-text-primary)",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <svg
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--color-primary)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            style={{ animation: "spin 0.8s linear infinite", margin: "0 auto" }}
+          >
+            <path d="M12 2a10 10 0 010 20" />
+          </svg>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ marginTop: "16px", fontSize: "14px" }}>Memuat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
+  const activeContact = contacts.find((c) => c.id === activeId) || contacts[0];
 
   return (
     <div
@@ -168,14 +241,8 @@ export default function ChatPage() {
         overflow: "hidden",
       }}
     >
-      {/* Sidebar kontak */}
-      <Sidebar
-        contacts={contacts}
-        activeId={activeId}
-        onSelect={handleSelect}
-      />
+      <Sidebar contacts={contacts} activeId={activeId} onSelect={handleSelect} />
 
-      {/* Area chat utama */}
       <div
         style={{
           flex: 1,
@@ -185,15 +252,28 @@ export default function ChatPage() {
           minWidth: 0,
         }}
       >
-        {/* Window pesan */}
-        <ChatWindow
-          contact={activeContact}
-          messages={allMessages[activeId] || []}
-          isTyping={isTyping}
-        />
-
-        {/* Input kirim pesan */}
-        <MessageInput onSend={handleSend} />
+        {activeContact ? (
+          <>
+            <ChatWindow
+              contact={activeContact}
+              messages={messages}
+              isTyping={isTyping}
+            />
+            <MessageInput onSend={handleSend} />
+          </>
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            Pilih chat untuk memulai percakapan
+          </div>
+        )}
       </div>
     </div>
   );

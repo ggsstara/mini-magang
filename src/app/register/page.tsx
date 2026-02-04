@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,9 +33,10 @@ export default function RegisterPage() {
 
   const strength = password ? getStrength() : null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     if (!name || !email || !password || !confirmPassword) return;
     if (password !== confirmPassword) {
       setError("Password dan konfirmasi tidak cocok.");
@@ -44,10 +46,44 @@ export default function RegisterPage() {
       setError("Password harus minimal 6 karakter.");
       return;
     }
+
     setLoading(true);
-    setTimeout(() => {
-      router.push("/chat");
-    }, 700);
+
+    try {
+      // Register user
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Registrasi gagal");
+        setLoading(false);
+        return;
+      }
+
+      // Auto-login after successful registration
+      const signInResult = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (signInResult?.error) {
+        setError("Registrasi berhasil, silakan login manual");
+        setLoading(false);
+        router.push("/login");
+      } else {
+        router.push("/chat");
+        router.refresh();
+      }
+    } catch (err) {
+      setError("Terjadi kesalahan. Silakan coba lagi.");
+      setLoading(false);
+    }
   };
 
   // ── Reusable input styles ──

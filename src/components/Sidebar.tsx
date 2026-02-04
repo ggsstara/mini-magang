@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { Contact } from "@/data/dummyData";
 
 interface SidebarProps {
@@ -307,8 +308,8 @@ export default function Sidebar({ contacts, activeId, onSelect }: SidebarProps) 
         </button>
 
         {/* Logout icon */}
-        <Link
-          href="/login"
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
           style={{
             background: "var(--color-bg-input)",
             border: "none",
@@ -327,7 +328,7 @@ export default function Sidebar({ contacts, activeId, onSelect }: SidebarProps) 
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-        </Link>
+        </button>
       </div>
     </aside>
   );
