@@ -1,11 +1,13 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
 
-export default function Home() {
-  const router = useRouter();
-  useEffect(() => {
-    router.push("/chat");
-  }, [router]);
-  return null;
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  redirect("/chat");
 }

@@ -11,26 +11,45 @@ export async function GET() {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const chatSessions = await prisma.chatSession.findMany({
       where: { userId: session.user.id },
       orderBy: { updatedAt: "desc" },
-      include: {
-        messages: {
-          orderBy: { timestamp: "desc" },
-          take: 1,
-        },
+      select: {
+        id: true,
+        botName: true,
+        botAvatar: true,
+        lastMessage: true,
+        lastTime: true,
+        unreadCount: true,
+        isOnline: true,
       },
     });
 
-    return NextResponse.json({ chatSessions }, { status: 200 });
+    return NextResponse.json(
+      { chatSessions },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get chat sessions error:", error);
     return NextResponse.json(
       { error: "Failed to fetch chat sessions" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   }
 }
