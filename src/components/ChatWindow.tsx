@@ -164,9 +164,7 @@ export default function ChatWindow({
                   style={{
                     animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
                   }}
-                />
-              >
-                </span>
+              ></span>
               ))}
             </div>
           </div>

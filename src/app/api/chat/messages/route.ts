@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,10 +10,7 @@ export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401, headers: { "Cache-Control": "no-store" } }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -20,7 +19,7 @@ export async function GET(req: Request) {
     if (!sessionId) {
       return NextResponse.json(
         { error: "Session ID required" },
-        { status: 400, headers: { "Cache-Control": "no-store" } }
+        { status: 400 }
       );
     }
 
@@ -30,46 +29,26 @@ export async function GET(req: Request) {
         id: sessionId,
         userId: session.user.id,
       },
-      select: { id: true },
     });
 
     if (!chatSession) {
       return NextResponse.json(
         { error: "Chat session not found" },
-        { status: 404, headers: { "Cache-Control": "no-store" } }
+        { status: 404 }
       );
     }
 
     const messages = await prisma.message.findMany({
       where: { chatSessionId: sessionId },
       orderBy: { timestamp: "asc" },
-      select: {
-        id: true,
-        sender: true,
-        text: true,
-        displayTime: true,
-      },
     });
 
-    return NextResponse.json(
-      { messages },
-      {
-        status: 200,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+    return NextResponse.json({ messages }, { status: 200 });
   } catch (error) {
     console.error("Get messages error:", error);
     return NextResponse.json(
       { error: "Failed to fetch messages" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
+      { status: 500 }
     );
   }
 }
