@@ -104,10 +104,23 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        userMessage,
-        botMessage,
+        userMessage: {
+          id: userMessage.id,
+          text: userMessage.text,
+          displayTime: userMessage.displayTime,
+        },
+        botMessage: {
+          id: botMessage.id,
+          text: botMessage.text,
+          displayTime: botMessage.displayTime,
+        },
       },
-      { status: 201 }
+      {
+        status: 201,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (error) {
     console.error("Send message error:", error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import MessageInput from "@/components/MessageInput";
@@ -184,8 +184,10 @@ export default function ChatClient({
     }
   };
 
-  const activeContact =
-    contacts.find((c) => c.id === activeId) ?? contacts[0] ?? null;
+  const activeContact = useMemo(
+    () => contacts.find((c) => c.id === activeId) ?? contacts[0] ?? null,
+    [contacts, activeId]
+  );
 
   return (
     <>

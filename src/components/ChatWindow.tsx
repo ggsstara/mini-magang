@@ -29,7 +29,7 @@ export default function ChatWindow({
       {/* ── Chat Header ── */}
       <div className="chat-header">
         {/* Avatar */}
-        <div className="chat-header-avatar" style={{ position: "relative" }}>
+        <div style={{ position: "relative" }}>
           <div className="chat-avatar-lg">{contact.avatar}</div>
           {contact.online && (
             <span
@@ -50,12 +50,14 @@ export default function ChatWindow({
 
         {/* Name + status */}
         <div>
-          <div className="text-[15px] font-semibold text-[color:var(--color-text-primary)]">
+          <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)" }}>
             {contact.name}
           </div>
           <div
-            className="text-[12px]"
-            style={{ color: contact.online ? "#22c55e" : "var(--color-text-muted)" }}
+            style={{
+              fontSize: "12px",
+              color: contact.online ? "#22c55e" : "var(--color-text-muted)",
+            }}
           >
             {contact.online ? "Online sekarang" : "Offline"}
           </div>

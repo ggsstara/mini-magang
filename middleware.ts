@@ -8,4 +8,7 @@ export const config = {
     // - Static files (_next/static, images, dll)
     "/((?!login|register|api/register|api/auth|_next/static|_next/image|favicon.ico|logo-.*\\.png).*)",
   ],
+  pages: {
+    signIn: "/login",
+  },
 };
