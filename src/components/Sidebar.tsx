@@ -93,9 +93,8 @@ export default function Sidebar({
             <button
               key={contact.id}
               onClick={() => onSelect(contact.id)}
-              className="animate-slideIn"
+              className={`animate-slideIn ${btnClass}`}
               style={{ animationDelay: `${i * 0.04}s` }}
-              className={btnClass}
               onMouseEnter={(e) => {
                 if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.04)";
               }}
