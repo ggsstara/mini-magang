@@ -5,28 +5,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// Dummy bot replies (akan diganti dengan AI nanti)
-const DUMMY_BOT_REPLIES = [
-  "Terima kasih atas pesan Anda! Saya sedang memproses informasi tersebut. 🤔",
-  "Poin yang sangat bagus! Mari kita diskusikan lebih lanjut.",
-  "Saya mengerti. Biarkan saya cari solusi terbaik untuk Anda.",
-  "Informasi Anda telah diterima. Akan segera saya tindaklanjuti.",
-  "Sounds great! Saya akan membantu Anda menyelesaikan hal ini sekarang.",
-  "Menarik sekali! Bisa Anda berikan lebih banyak detail untuk saya proses?",
-  "Oke, saya akan menganalisis hal tersebut dan memberikan rekomendasi terbaik.",
-  "Done! Hasilnya sudah saya siapkan untuk Anda. ✅",
-  "Sempurna, langkah selanjutnya akan saya atur otomatis.",
-  "Baru saja saya periksa — semuanya berjalan lancar di sisi server. 🟢",
-];
-
-let replyIndex = 0;
-
-function getNextBotReply(): string {
-  const reply = DUMMY_BOT_REPLIES[replyIndex % DUMMY_BOT_REPLIES.length];
-  replyIndex++;
-  return reply;
-}
-
 function formatTime(): string {
   return new Date().toLocaleTimeString("id-ID", {
     hour: "2-digit",
@@ -69,6 +47,14 @@ export async function POST(req: Request) {
     const now = new Date();
     const displayTime = formatTime();
 
+    const historyDesc = await prisma.message.findMany({
+      where: { chatSessionId: sessionId },
+      orderBy: { timestamp: "desc" },
+      take: 10,
+      select: { sender: true, text: true },
+    });
+    const historyAsc = historyDesc.reverse();
+
     // Create user message
     const userMessage = await prisma.message.create({
       data: {
@@ -80,15 +66,65 @@ export async function POST(req: Request) {
       },
     });
 
-    // Generate bot reply
-    const botReplyText = getNextBotReply();
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "LLM API key not configured" },
+        { status: 500 }
+      );
+    }
+
+    const contents = [
+      ...historyAsc.map((m) => ({
+        role: m.sender === "user" ? "user" : "model",
+        parts: [{ text: m.text }],
+      })),
+      {
+        role: "user",
+        parts: [{ text: text.trim() }],
+      },
+    ];
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: "Kamu adalah asisten helpful." }],
+          },
+          contents,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Gemini error:", errText);
+    }
+
+    const data = res.ok ? await res.json() : null;
+    let botReplyText = "Maaf, terjadi kesalahan saat memproses permintaan.";
+    if (data?.candidates?.[0]?.content?.parts) {
+      const parts = data.candidates[0].content.parts;
+      const textParts = parts
+        .map((p: any) => (typeof p.text === "string" ? p.text : ""))
+        .filter(Boolean);
+      if (textParts.length > 0) {
+        botReplyText = textParts.join("\n\n").trim();
+      }
+    }
+
     const botMessage = await prisma.message.create({
       data: {
         chatSessionId: sessionId,
         sender: "bot",
         text: botReplyText,
         displayTime: formatTime(),
-        timestamp: new Date(now.getTime() + 1500), // 1.5s delay simulation
+        timestamp: new Date(),
       },
     });
 
