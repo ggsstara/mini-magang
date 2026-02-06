@@ -66,48 +66,41 @@ export async function POST(req: Request) {
       },
     });
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "LLM API key not configured" },
+        { error: "OpenRouter API key not configured" },
         { status: 500 }
       );
     }
 
-    const contents = [
+    const model = process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free";
+    const messages = [
+      { role: "system" as const, content: "Kamu adalah asisten helpful." },
       ...historyAsc.map((m) => ({
-        role: m.sender === "user" ? "user" : "model",
-        parts: [{ text: m.text }],
+        role: (m.sender === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: m.text,
       })),
-      {
-        role: "user",
-        parts: [{ text: text.trim() }],
-      },
+      { role: "user" as const, content: text.trim() },
     ];
 
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
     let data: any = null;
     let lastErrorText = "";
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              systemInstruction: {
-                parts: [{ text: "Kamu adalah asisten helpful." }],
-              },
-              contents,
-            }),
-            signal: controller.signal,
-          }
-        );
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": process.env.NEXTAUTH_URL || "http://localhost:3000",
+            "X-Title": "Chatrigo",
+          },
+          body: JSON.stringify({ model, messages, max_tokens: 4096 }),
+          signal: controller.signal,
+        });
         clearTimeout(timeout);
         if (res.ok) {
           data = await res.json();
@@ -123,25 +116,19 @@ export async function POST(req: Request) {
       }
     }
     if (!data && lastErrorText) {
-      console.error("Gemini error:", lastErrorText);
-      // Return actual error to help debug connection issues
+      console.error("OpenRouter error:", lastErrorText);
       return NextResponse.json(
         {
-          error: "Gemini API connection failed",
+          error: "OpenRouter API connection failed",
           details: lastErrorText,
         },
         { status: 502 }
       );
     }
     let botReplyText = "Maaf, terjadi kesalahan saat memproses permintaan.";
-    if (data?.candidates?.[0]?.content?.parts) {
-      const parts = data.candidates[0].content.parts;
-      const textParts = parts
-        .map((p: any) => (typeof p.text === "string" ? p.text : ""))
-        .filter(Boolean);
-      if (textParts.length > 0) {
-        botReplyText = textParts.join("\n\n").trim();
-      }
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content === "string" && content.trim()) {
+      botReplyText = content.trim();
     }
 
     const botMessage = await prisma.message.create({
