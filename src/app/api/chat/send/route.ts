@@ -85,28 +85,54 @@ export async function POST(req: Request) {
       },
     ];
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: "Kamu adalah asisten helpful." }],
-          },
-          contents,
-        }),
+    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    let data: any = null;
+    let lastErrorText = "";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: "Kamu adalah asisten helpful." }],
+              },
+              contents,
+            }),
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeout);
+        if (res.ok) {
+          data = await res.json();
+          break;
+        } else {
+          lastErrorText = await res.text();
+          if (res.status === 401 || res.status === 403 || res.status === 429) {
+            break;
+          }
+        }
+      } catch (e: any) {
+        lastErrorText = String(e?.message || e);
       }
-    );
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("Gemini error:", errText);
     }
-
-    const data = res.ok ? await res.json() : null;
+    if (!data && lastErrorText) {
+      console.error("Gemini error:", lastErrorText);
+      // Return actual error to help debug connection issues
+      return NextResponse.json(
+        {
+          error: "Gemini API connection failed",
+          details: lastErrorText,
+        },
+        { status: 502 }
+      );
+    }
     let botReplyText = "Maaf, terjadi kesalahan saat memproses permintaan.";
     if (data?.candidates?.[0]?.content?.parts) {
       const parts = data.candidates[0].content.parts;

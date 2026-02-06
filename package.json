@@ -12,6 +12,7 @@
     "prisma:push": "prisma db push"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.19.0",
     "@supabase/supabase-js": "^2.45.0",
     "bcryptjs": "^2.4.3",
@@ -21,11 +22,11 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^14.2.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "@next/bundle-analyzer": "^14.2.5",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.40",
     "prisma": "^5.19.0",

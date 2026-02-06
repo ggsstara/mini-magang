@@ -172,8 +172,11 @@ export default function ChatClient({
           )
         );
       } else {
-        // Remove temp message on error from server
+        // Remove temp message and show error
         setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+        const errMsg = data?.details || data?.error || "Failed to send message";
+        console.error("Chat send error:", errMsg);
+        alert(errMsg);
       }
     } catch (error) {
       console.error("Failed to send message:", error);
