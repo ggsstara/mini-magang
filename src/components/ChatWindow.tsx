@@ -1,6 +1,6 @@
  "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, memo } from "react";
 import type { Contact, Message } from "@/app/chat/ChatClient";
 import { DoubleCheckIcon } from "@/components/icons";
 
@@ -10,19 +10,18 @@ interface ChatWindowProps {
   isTyping: boolean;
 }
 
-export default function ChatWindow({
+function ChatWindow({
   contact,
   messages,
   isTyping,
 }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom whenever messages or typing state changes
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages.length, isTyping]);
 
   return (
     <div className="chat-column">
@@ -161,3 +160,5 @@ export default function ChatWindow({
     </div>
   );
 }
+
+export default memo(ChatWindow);

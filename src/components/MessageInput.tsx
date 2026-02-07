@@ -1,6 +1,6 @@
  "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, memo } from "react";
 import {
   SendIcon,
 } from "@/components/icons";
@@ -9,7 +9,7 @@ interface MessageInputProps {
   onSend: (text: string) => void;
 }
 
-export default function MessageInput({ onSend }: MessageInputProps) {
+function MessageInput({ onSend }: MessageInputProps) {
   const [value, setValue] = useState("");
   const textRef = useRef<HTMLTextAreaElement>(null);
 
@@ -68,3 +68,5 @@ export default function MessageInput({ onSend }: MessageInputProps) {
     </div>
   );
 }
+
+export default memo(MessageInput);

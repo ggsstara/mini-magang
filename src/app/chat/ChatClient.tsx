@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, startTransition } from "react";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import MessageInput from "@/components/MessageInput";
@@ -81,7 +81,9 @@ export default function ChatClient({
           time: msg.displayTime,
         }));
 
-        setMessages(formatted);
+        startTransition(() => {
+          setMessages(formatted);
+        });
       }
     } catch (error) {
       if ((error as Error).name === "AbortError") {
@@ -96,12 +98,14 @@ export default function ChatClient({
     setActiveId(id);
     setIsTyping(false);
     // Clear unread badge
-    setContacts((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c))
-    );
+    startTransition(() => {
+      setContacts((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c))
+      );
+    });
   }, []);
 
-  const handleSend = async (text: string) => {
+  const handleSend = useCallback(async (text: string) => {
     if (!activeId) return;
 
     const tempUserMsg: Message = {
@@ -118,13 +122,15 @@ export default function ChatClient({
     setMessages((prev) => [...prev, tempUserMsg]);
 
     // Update sidebar preview immediately
-    setContacts((prev) =>
-      prev.map((c) =>
-        c.id === activeId
-          ? { ...c, lastMessage: text, time: tempUserMsg.time }
-          : c
-      )
-    );
+    startTransition(() => {
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.id === activeId
+            ? { ...c, lastMessage: text, time: tempUserMsg.time }
+            : c
+        )
+      );
+    });
 
     // Show typing indicator
     setIsTyping(true);
@@ -160,17 +166,19 @@ export default function ChatClient({
         });
 
         // Update sidebar with bot reply
-        setContacts((prev) =>
-          prev.map((c) =>
-            c.id === activeId
-              ? {
-                  ...c,
-                  lastMessage: data.botMessage.text,
-                  time: data.botMessage.displayTime,
-                }
-              : c
-          )
-        );
+        startTransition(() => {
+          setContacts((prev) =>
+            prev.map((c) =>
+              c.id === activeId
+                ? {
+                    ...c,
+                    lastMessage: data.botMessage.text,
+                    time: data.botMessage.displayTime,
+                  }
+                : c
+            )
+          );
+        });
       } else {
         // Remove temp message and show error
         setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
@@ -185,7 +193,7 @@ export default function ChatClient({
     } finally {
       setIsTyping(false);
     }
-  };
+  }, [activeId]);
 
   const activeContact = useMemo(
     () => contacts.find((c) => c.id === activeId) ?? contacts[0] ?? null,

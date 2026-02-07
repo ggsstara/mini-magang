@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import { memo } from "react";
 import type { Contact } from "@/app/chat/ChatClient";
 import {
   SearchIcon,
@@ -16,7 +17,7 @@ interface SidebarProps {
   onSelect: (id: string) => void;
 }
 
-export default function Sidebar({
+function Sidebar({
   contacts,
   activeId,
   onSelect,
@@ -240,3 +241,5 @@ export default function Sidebar({
     </aside>
   );
 }
+
+export default memo(Sidebar);
