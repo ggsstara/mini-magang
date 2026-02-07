@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── User Model ──────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String // hashed dengan bcrypt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  chatSessions ChatSession[]
+
+  @@map("users")
+}
+
+// ─── ChatSession Model ───────────────────────────────────────────────────────
+// Satu chat session = satu kontak/bot di sidebar
+
+model ChatSession {
+  id          String   @id @default(cuid())
+  userId      String
+  botName     String // Nama bot/assistant (e.g., "Chatrigo Assistant", "Marketing Bot")
+  botAvatar   String // Single letter avatar (e.g., "C", "M")
+  lastMessage String   @default("") // Preview pesan terakhir
+  lastTime    String   @default("") // Waktu terakhir (format display)
+  unreadCount Int      @default(0)
+  isOnline    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId])
+  @@map("chat_sessions")
+}
+
+// ─── Message Model ───────────────────────────────────────────────────────────
+
+model Message {
+  id            String   @id @default(cuid())
+  chatSessionId String
+  sender        String // "user" atau "bot"
+  text          String   @db.Text
+  timestamp     DateTime @default(now())
+  displayTime   String // Format HH:MM untuk display
+
+  // Relations
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  @@index([chatSessionId])
+  @@map("messages")
+}
