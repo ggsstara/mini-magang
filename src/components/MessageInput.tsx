@@ -2,10 +2,6 @@
 
 import { useState, useRef } from "react";
 import {
-  AttachmentIcon,
-  ImageIcon,
-  GifIcon,
-  EmojiIcon,
   SendIcon,
 } from "@/components/icons";
 
@@ -34,30 +30,7 @@ export default function MessageInput({ onSend }: MessageInputProps) {
 
   return (
     <div className="message-input-root">
-      {/* Toolbar icons row */}
-      <div className="message-input-toolbar">
-        {/* Attachment */}
-        <button
-          className="message-input-toolbar-button"
-          title="Lampiran"
-        >
-          <AttachmentIcon />
-        </button>
-        {/* Image */}
-        <button
-          className="message-input-toolbar-button"
-          title="Gambar"
-        >
-          <ImageIcon />
-        </button>
-        {/* GIF / Sticker */}
-        <button
-          className="message-input-toolbar-button"
-          title="GIF"
-        >
-          <GifIcon />
-        </button>
-      </div>
+      <div style={{ height: "8px" }} />
 
       {/* Input row */}
       <div className="message-input-box">
@@ -70,14 +43,6 @@ export default function MessageInput({ onSend }: MessageInputProps) {
           rows={1}
           className="message-input-textarea"
         />
-
-        {/* Emoji btn */}
-        <button
-          className="message-input-emoji-btn"
-          title="Emoji"
-        >
-          <EmojiIcon />
-        </button>
 
         {/* Send button */}
         <button

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Contact, Message } from "@/app/chat/ChatClient";
-import { PhoneIcon, VideoIcon, MoreVerticalIcon, DoubleCheckIcon } from "@/components/icons";
+import { DoubleCheckIcon } from "@/components/icons";
 
 interface ChatWindowProps {
   contact: Contact;
@@ -63,21 +63,7 @@ export default function ChatWindow({
           </div>
         </div>
 
-        {/* Right actions */}
-        <div className="chat-header-actions">
-          {/* Phone */}
-          <button className="icon-button">
-            <PhoneIcon />
-          </button>
-          {/* Video */}
-          <button className="icon-button">
-            <VideoIcon />
-          </button>
-          {/* More */}
-          <button className="icon-button">
-            <MoreVerticalIcon />
-          </button>
-        </div>
+        <div style={{ flex: 1 }} />
       </div>
 
       {/* ── Message Scroll Area ── */}

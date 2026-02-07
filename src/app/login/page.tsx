@@ -357,28 +357,6 @@ export default function LoginPage() {
             </svg>
             Google
           </button>
-          <button
-            style={{
-              flex: 1,
-              padding: "12px",
-              background: "var(--color-bg-input)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "12px",
-              color: "var(--color-text-secondary)",
-              fontSize: "13.5px",
-              fontWeight: 500,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-            }}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff">
-              <path d="M12 2C6.48 2 2 6.48 2 12c0 4.24 2.65 7.86 6.39 9.29.47.08.61-.2.61-.45v-1.69c-2.59.56-3.14-1.25-3.14-1.25-.42-1.08-1.04-1.36-1.04-1.36-.85-.58.06-.57.06-.57.93.07 1.42.96 1.42.96.83 1.41 2.17.99 2.7.76.08-.6.32-1 .58-1.23-2.07-.24-4.24-1.04-4.24-4.64 0-1.02.37-1.86 0.96-2.51-.1-.24-.42-1.19.09-2.48 0 0 .78-.25 2.55.95.74-.2 1.54-.3 2.34-.3s1.6.1 2.34.3c1.77-1.2 2.55-.95 2.55-.95.51 1.29.19 2.24.09 2.48.6.66.96 1.49.96 2.51 0 3.61-2.18 4.39-4.26 4.62.33.28.63.82.63 1.66V21c0 .25.14.53.62.45C19.36 19.85 22 16.24 22 12 22 6.48 17.52 2 12 2z"/>
-            </svg>
-            GitHub
-          </button>
         </div>
 
         {/* Register link */}
