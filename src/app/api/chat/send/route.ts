@@ -5,6 +5,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 10;
+const MAX_INPUT_LENGTH = 4000;
+const userRateMap = new Map<string, number[]>();
+
 function formatTime(): string {
   return new Date().toLocaleTimeString("id-ID", {
     hour: "2-digit",
@@ -28,6 +33,24 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    if (text.length > MAX_INPUT_LENGTH) {
+      return NextResponse.json(
+        { error: "Message too long" },
+        { status: 413 }
+      );
+    }
+
+    const nowMs = Date.now();
+    const arr = userRateMap.get(session.user.id) || [];
+    const recent = arr.filter((t) => nowMs - t < RATE_WINDOW_MS);
+    if (recent.length >= RATE_MAX) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429 }
+      );
+    }
+    recent.push(nowMs);
+    userRateMap.set(session.user.id, recent);
 
     // Verify session belongs to user
     const chatSession = await prisma.chatSession.findFirst({

@@ -15,6 +15,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
+    const limitParam = searchParams.get("limit");
+    const limit = Math.max(1, Math.min(200, Number(limitParam) || 100));
 
     if (!sessionId) {
       return NextResponse.json(
@@ -38,10 +40,12 @@ export async function GET(req: Request) {
       );
     }
 
-    const messages = await prisma.message.findMany({
+    const messagesDesc = await prisma.message.findMany({
       where: { chatSessionId: sessionId },
-      orderBy: { timestamp: "asc" },
+      orderBy: { timestamp: "desc" },
+      take: limit,
     });
+    const messages = messagesDesc.reverse();
 
     return NextResponse.json({ messages }, { status: 200 });
   } catch (error) {
