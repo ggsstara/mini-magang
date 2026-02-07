@@ -262,6 +262,28 @@ input:focus, button:focus {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+}
+
+.sidebar-collapsed {
+  width: 36px;
+  min-width: 36px;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--color-bg-input);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-primary);
+  cursor: pointer;
 }
 
 .sidebar-header {
@@ -450,4 +472,3 @@ input:focus, button:focus {
   margin-top: 8px;
   text-align: center;
 }
-
